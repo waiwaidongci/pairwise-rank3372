@@ -23,9 +23,10 @@
 3. 09:15 到拟合工作台，取 λ=1、100次 bootstrap、seed=20261112，填写研究名后“冻结票数并排队”。worker执行，页面每2.5秒刷新。
 4. 09:17 阅读结果：固定数据下回声廊中心化能力为1.020641，水纹折页为0.572832、风的尺度为0.551493。能力来自对手调整的选择模型，负能力仍可有价值。
 5. 09:20 切换“名次重现”：水纹折页与风的尺度的2.5%–97.5%经验名次分位均为2–4。回声廊100次中98次第1、2次第2，首位分摊频率98%；这不是后验概率。
-6. 09:25 在“重复留档”逐页核对100次原始重拟合；每次保留48条边的实际重采样胜票、12个能力、平均名次及一阶条件残差。
-7. 09:35 提出“水纹折页 × 风的尺度 · 独立补票30票”，说明名次范围、题序检查和成对独立假设。提案不会自动增加原始票数。
-8. 10:00 梁晴用 admin 留下批注并同意补充评议；周原用 viewer 下载 `review-proposal-<id>.csv`。文件包含审批、指纹、12项模型摘要和66对胜率；新票需回核对页录入，再建新快照。
+6. 09:22 在“逐对剔除”标签排队诊断：48条比较边逐对暂时移出冻结快照，用原参数重算。09:24阅读：树影合奏×慢行波谱剔除后名次变化最大（树影合奏第7→第5），水纹折页×风的尺度剔除仅移动1位；断连或失败的对单独列出，不进入影响排序。
+7. 09:25 在“重复留档”逐页核对100次原始重拟合；每次保留48条边的实际重采样胜票、12个能力、平均名次及一阶条件残差。
+8. 09:35 提出“水纹折页 × 风的尺度 · 独立补票30票”，说明名次范围、题序检查和成对独立假设。提案不会自动增加原始票数。
+9. 10:00 梁晴用 admin 留下批注并同意补充评议；周原用 viewer 下载 `review-proposal-<id>.csv`。文件包含审批、指纹、12项模型摘要和66对胜率；新票需回核对页录入，再建新快照。
 
 这些数值来自固定seed真实计算；并列与重采样范围不能被解读为策展决策或个人绩效。
 
@@ -51,7 +52,7 @@ docker compose exec -T backend python -m scripts.seed_demo
 |---|---|---|
 | frontend | React18.3.1 / TypeScript / Vite6.4.6 构建，Nginx1.27分发 | HTTP 127.0.0.1 |
 | backend | Python3.11 / FastAPI0.115.6 / SQLAlchemy2 / PyJWT | 数据库SELECT1 + Redis ping |
-| worker | 同后端镜像；单进程扫描数据库队列并读取Redis唤醒 | 心跳文件30秒内更新 |
+| worker | 同后端镜像；单进程扫描拟合与诊断两类数据库队列并读取Redis唤醒 | 心跳文件30秒内更新 |
 | db | PostgreSQL16 | pg_isready |
 | redis | Redis7 AOF；队列唤醒/登录限流 | redis-cli ping |
 
@@ -67,7 +68,7 @@ Compose恰好5服务，依赖使用 service_healthy；命名卷为数据库、Re
 | DATABASE_URL / REDIS_URL | Compose内部地址；本地开发可覆盖 |
 | OMP_NUM_THREADS / OPENBLAS_NUM_THREADS | 1，限制数值线程 |
 
-JWT有效8小时，PBKDF2-SHA256存储密码。三组跨端枚举为Role、RunStatus、ProposalStatus，定义位置分别在 `backend/src/constants/enums.py` 与 `frontend/src/constants/enums.ts`；被auth依赖、run/proposal服务与schema、worker、状态组件/账户/结果及提案页面使用。审计中间件记录写操作和导出（含权限拒绝）；全局异常中间件统一失败；Redis按IP限制登录30次/分钟。全局最多3个活动任务，单任务2–30作品、≤300边、50–200次重复；数值库单线程。
+JWT有效8小时，PBKDF2-SHA256存储密码。三组跨端枚举为Role、RunStatus、ProposalStatus，定义位置分别在 `backend/src/constants/enums.py` 与 `frontend/src/constants/enums.ts`；被auth依赖、run/proposal服务与schema、worker、状态组件/账户/结果及提案页面使用。审计中间件记录写操作和导出（含权限拒绝）；全局异常中间件统一失败；Redis按IP限制登录30次/分钟。全局最多3个活动任务（拟合与逐对剔除诊断共享上限），单任务2–30作品、≤300边、50–200次重复；数值库单线程。
 
 ## 核心口径与可复算性
 
@@ -88,21 +89,27 @@ Bootstrap使用 `Binomial(n_ij, w_ij/n_ij)`，每条边总票数固定、按观�
 
 SHA256覆盖算法版本、完整冻结快照、λ、重复数、seed。JSON结果同时写数据库和 `/artifacts/run-<id>.json`。相同软件环境与完整快照可逐字复算；指纹包含数据库ID，重新建库或更换来源标识不保证指纹相同。
 
+## 逐对剔除诊断
+
+已完成研究可在结果页排队逐对剔除诊断：把冻结快照中的每条比较边逐对暂时移出，用原研究的 λ、重复数与 seed 重算能力与名次，回答“名次是否被某一对票数左右”。诊断只读父研究的冻结快照——台账后续改票不影响既有诊断，原研究结果与补票提案依据保持不变；不同研究同时排队的诊断各有独立数据行、`/artifacts/sensitivity-<id>.json` 产物与指纹，互不串结果。
+
+每对剔除的重采样流由 `SeedSequence([seed, 边序号])` 派生，与主运行及其他剔除互不共享，仍按 Binomial(n_ij, 观测比例) 固定总票抽样。剔除后图断连时只列出连通分组，不强行给出总名次；单对重算未达一阶条件时标为单对失败。断连对与失败对都不进入“影响最大的作品对”排序——该排序只基于可重算对的最大名次变化（并列取平均名次，同主研究口径）。诊断指纹覆盖算法版本、父研究指纹、完整冻结快照与原参数；计算量约为父研究的边数倍，计入同一活动任务上限。
+
 ## 代码与本地开发
 
 ```text
 backend/src/
-  models + schemas + services + controllers + routes  五条业务链
-  services/{comparison_graph,bt_solver,rank_bootstrap}.py
+  models + schemas + services + controllers + routes  六条业务链
+  services/{comparison_graph,bt_solver,rank_bootstrap,pair_omission}.py
   config / constants / middlewares / utils / main.py / worker.py
 backend/scripts/seed_demo.py
-backend/migrations/001_initial.sql
+backend/migrations/001_initial.sql + 002_sensitivity.sql
 frontend/src/
   api / stores / types / constants / components/common / hooks
   pages / router / utils / App.tsx / main.tsx / styles.css
 ```
 
-五个实体 ComparisonStudy、Concept、PairCount、RankingRun、ReviewProposal 各有独立model/schema/service/controller/route/API模块；studyStore、inputStore和researchStore承接对应实体状态，分别贯穿总谱/核对/运行/结果/审阅页面。StudySelect复用于总谱、输入、配置；PageHeading、StatusBadge、ErrorNotice等共享。独立留档页为第六页，登录单独。
+六个实体 ComparisonStudy、Concept、PairCount、RankingRun、SensitivityRun、ReviewProposal 各有独立model/schema/service/controller/route/API模块；studyStore、inputStore和researchStore承接对应实体状态，分别贯穿总谱/核对/运行/结果/审阅页面，逐对剔除诊断挂在已完成研究下、作为结果页第四标签呈现。StudySelect复用于总谱、输入、配置；PageHeading、StatusBadge、ErrorNotice等共享。独立留档页为第六页，登录单独。
 
 ```bash
 # 从项目根先启动两个依赖

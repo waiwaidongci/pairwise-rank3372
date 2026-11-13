@@ -4,7 +4,7 @@ from sqlalchemy import select,func
 from fastapi import HTTPException
 from redis import Redis
 from src.config.settings import REDIS_URL
-from src.models import RankingRun
+from src.models import RankingRun,SensitivityRun
 from src.services.study_service import get_study
 from src.services.concept_service import list_concepts
 from src.services.pair_service import list_pairs
@@ -17,10 +17,15 @@ def get_run(db,id):
     if not item:raise HTTPException(404,'拟合任务不存在')
     return item
 
+def active_task_count(db):
+    runs=db.scalar(select(func.count()).select_from(RankingRun).where(RankingRun.status.in_(['queued','running'])))
+    sensitivity=db.scalar(select(func.count()).select_from(SensitivityRun).where(SensitivityRun.status.in_(['queued','running'])))
+    return runs+sensitivity
+
 def create_run(db,data):
     study=get_study(db,data.study_id)
     if db.scalar(select(RankingRun).where(RankingRun.name==data.name)):raise HTTPException(409,'任务名称已存在')
-    if db.scalar(select(func.count()).select_from(RankingRun).where(RankingRun.status.in_(['queued','running'])))>=3:raise HTTPException(429,'已有3项活动任务，请等待完成')
+    if active_task_count(db)>=3:raise HTTPException(429,'已有3项活动任务，请等待完成')
     concepts=[{k:getattr(c,k) for k in ('id','code','title','medium')} for c in list_concepts(db,study.id)]
     pairs=[{k:getattr(c,k) for k in ('id','left_id','right_id','left_wins','right_wins','source')} for c in list_pairs(db,study.id)]
     snapshot={'study':{'id':study.id,'code':study.code,'name':study.name,'source_file':study.source_file},'concepts':concepts,'pairs':pairs}

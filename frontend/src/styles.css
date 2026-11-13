@@ -6,3 +6,21 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
 .rank-chart-scroll{overflow-x:auto;max-width:100%}@media(max-width:600px){.rank-plot{min-width:650px}.stability-spread>section{min-width:0}}
+.omission-fold{border-top:1px solid var(--line);margin-bottom:24px}
+.omission-fold>details{border-bottom:1px solid var(--line);padding:14px 0}
+.omission-fold summary{cursor:pointer;display:grid;grid-template-columns:1.7fr 1fr 1fr;gap:15px;align-items:baseline;font-size:13px;list-style:none}
+.omission-fold summary::-webkit-details-marker{display:none}
+.omission-fold summary small{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+.omission-fold summary b{font-weight:500}
+.omission-fold .delta-cell{text-align:right}
+.omission-fold .table-scroll{margin-top:14px;border-bottom:0}
+.delta-up{color:var(--rust)}
+.delta-down{color:var(--sage)}
+tr.most-moved td{background:oklch(94% .02 83)}
+.omission-disc{border-bottom:1px solid var(--line);padding:14px 0;font-size:13px}
+.omission-disc p{margin:6px 0}
+.omission-groups{display:flex;gap:34px;flex-wrap:wrap;margin-top:8px}
+.omission-groups>div{border-left:2px solid var(--rust);padding-left:15px;font-size:12px;max-width:420px}
+.omission-groups p{margin:4px 0;color:var(--muted)}
+.omission-form{max-width:560px;margin-top:18px}
+@media(max-width:800px){.omission-fold summary{grid-template-columns:1fr 1fr}.omission-fold summary>span:first-child{grid-column:1/-1}.omission-groups{gap:18px}}

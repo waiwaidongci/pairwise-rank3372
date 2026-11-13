@@ -1,0 +1,18 @@
+
+CREATE TABLE sensitivity_runs (
+	id SERIAL NOT NULL,
+	name VARCHAR(140) NOT NULL,
+	run_id INTEGER NOT NULL,
+	ridge DOUBLE PRECISION NOT NULL,
+	repeats INTEGER NOT NULL,
+	seed INTEGER NOT NULL,
+	status VARCHAR(20) NOT NULL,
+	result JSON NOT NULL,
+	error VARCHAR(600) NOT NULL,
+	created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+	PRIMARY KEY (id),
+	UNIQUE (name),
+	FOREIGN KEY(run_id) REFERENCES ranking_runs (id)
+)
+
+;
